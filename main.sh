@@ -21,9 +21,6 @@ for url in "${DATASET_URLS[@]}"; do
     # 3) dir name will be exactly after ": " and right before "/"
     data_dir=$(unzip -o $fname | awk 'NR==2' | cut -d ":" -f 2 | sed 's/.$//' | cut -c 2- )
 
-    # remove non-useful stuff extracted
-    rm -rf __MACOSX
-
     # convert csv's to parquet's
     echo "==> Converting csv's to parquet's ..."
     pipenv run python csv2parquet.py --dirname $data_dir
@@ -31,4 +28,8 @@ for url in "${DATASET_URLS[@]}"; do
     # # compress parquet files, parallelize across all cores
     echo "==> Compressing parquet dataset directory ..."
     tar -cf - "${data_dir}_parquet" | xz -9v --threads=`nproc` -c - > "${data_dir}.tar.xz"
+
+    # clean up non-essentials
+    rm -rf $fname $data_dir "${data_dir}_parquet" __MACOSX
+
 done
