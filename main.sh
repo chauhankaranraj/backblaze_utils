@@ -2,31 +2,29 @@
 
 # backblaze q1 2019 dataset links
 DATASET_URLS=(
-    "https://f001.backblazeb2.com/file/Backblaze-Hard-Drive-Data/data_Q1_2019.zip"
-    "https://f001.backblazeb2.com/file/Backblaze-Hard-Drive-Data/data_Q2_2019.zip"
-    "https://f001.backblazeb2.com/file/Backblaze-Hard-Drive-Data/data_Q3_2019.zip"
-    "https://f001.backblazeb2.com/file/Backblaze-Hard-Drive-Data/data_Q4_2019.zip"
+    "https://f001.backblazeb2.com/file/Backblaze-Hard-Drive-Data/data_Q1_2020.zip"
+    "https://f001.backblazeb2.com/file/Backblaze-Hard-Drive-Data/data_Q2_2020.zip"
+    "https://f001.backblazeb2.com/file/Backblaze-Hard-Drive-Data/data_Q3_2020.zip"
 )
 
 for url in "${DATASET_URLS[@]}"; do
+    fname=$(echo $url | rev | cut --delimiter \/ -f1 | rev)
+    data_dir=$(echo $fname | cut -d. -f1)
+
     # download
-    echo "==> Downloading file from $url ..."
-    fname=$(wget -nv $url 2>&1 | cut -d\" -f2)
+    echo "==> Downloading file $fname from $url ..."
+    wget $url -O $fname
 
     # extract
-    echo "==> Unzipping downloaded file \"$fname\" ..."
-    # NOTE: assumes the following
-    # 1) first directory to be created will be the dataset directory
-    # 2) unzip will display that on the second line
-    # 3) dir name will be exactly after ": " and right before "/"
-    data_dir=$(unzip -o $fname | awk 'NR==2' | cut -d ":" -f 2 | sed 's/.$//' | cut -c 2- )
+    echo "==> Unzipping downloaded file $fname into directory $data_dir ..."
+    unzip -o $fname -d $data_dir
 
     # convert csv's to parquet's
-    echo "==> Converting csv's to parquet's ..."
+    echo "==> Converting csv's in directory $data_dir to parquet's ..."
     pipenv run python csv2parquet.py --dirname $data_dir
 
-    # # compress parquet files, parallelize across all cores
-    echo "==> Compressing parquet dataset directory ..."
+    # compress parquet files, parallelize across all cores
+    echo "==> Compressing parquet dataset directory ${data_dir}_parquet ..."
     tar -cf - "${data_dir}_parquet" | xz -9v --threads=`nproc` -c - > "${data_dir}.tar.xz"
 
     # clean up non-essentials
